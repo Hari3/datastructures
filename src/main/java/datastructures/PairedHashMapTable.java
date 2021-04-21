@@ -3,8 +3,6 @@ package datastructures;
 import javafx.util.Pair;
 
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * A data structure which maintains it's values in a tabular form.
@@ -128,13 +126,14 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
         if (!identifiers.contains(identifier))
             throw new NoSuchElementException("Row '" + identifier + "' does not exist in this Table!");
 
+        // NOTE: Using Collectors.toMap(..) results in a NullPointerException, value of map is null.
+        // See https://bugs.openjdk.java.net/browse/JDK-8148463
         return headers
                 .stream()
                 .collect(
-                        Collectors.toMap(
-                                Function.identity(),
-                                header -> get(header, identifier)
-                        )
+                        HashMap::new,
+                        (map, header) -> map.put(header, get(header, identifier)),
+                        HashMap::putAll
                 );
     }
 
@@ -151,13 +150,14 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
         if (!headers.contains(header))
             throw new NoSuchElementException("Column '" + header + "' does not exist in this Table!");
 
+        // NOTE: Using Collectors.toMap(..) results in a NullPointerException, value of map is null.
+        // See https://bugs.openjdk.java.net/browse/JDK-8148463
         return identifiers
                 .stream()
                 .collect(
-                        Collectors.toMap(
-                                Function.identity(),
-                                identifier -> get(header, identifier)
-                        )
+                        HashMap::new,
+                        (map, identifier) -> map.put(identifier, get(header, identifier)),
+                        HashMap::putAll
                 );
     }
 
@@ -182,11 +182,10 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
      * @return the value associated with given Column and Row. {@code null} is no such value exists.
      */
     @Override
-    public Object getOrElse(C header, R identifier, Object defaultValue) {
-        Pair<C, R> key = getKey(header, identifier);
-        if (map.containsKey(key))
-            return map.get(key);
-        return defaultValue;
+    public V getOrElse(C header, R identifier, V defaultValue) {
+        return contains(header, identifier)
+                ? get(header, identifier)
+                : defaultValue;
     }
 
     private Pair<C, R> getKey(C header, R identifier) {

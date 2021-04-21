@@ -99,7 +99,7 @@ public interface Table<V, C, R> {
      * @param defaultValue The default value to return if Table does not contain value
      * @return the value associated with given Column and Row. {@code null} is no such value exists.
      */
-    Object getOrElse(C header, R identifier, Object defaultValue);
+    V getOrElse(C header, R identifier, V defaultValue);
 
 
     /**
