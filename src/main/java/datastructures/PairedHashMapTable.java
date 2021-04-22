@@ -23,6 +23,10 @@ import java.util.*;
  */
 public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
 
+    private static final String DOES_NOT_EXIST = "' does not exist in this Table!";
+    private static final String ROW = "Row '";
+    private static final String COLUMN = "Column '";
+
     private final Map<Pair<C, R>, V> map;
     private final Set<C> headers;
     private final Set<R> identifiers;
@@ -35,7 +39,7 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
 
 
     /**
-     * Adds a new Column to this Table, and sets the value for all existing Rows to {@code null}
+     * Adds a new Column to this Table, and leaves the value for all existing Rows to remain unset.
      * If this Table already contains a Column with specified header, the call leaves the Table
      * unchanged and returns {@code false}
      *
@@ -48,34 +52,30 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
     }
 
     /**
-     * Adds a new Column to this Table, and sets the value for existing Rows to the value in the Map,
-     * keyed by it's identifier. Rows missing entries in the map is associated with {@code null}.
+     * Adds a new Column to this Table, and sets the value for existing Rows using the Map provided.
+     * Rows missing entries in the map are left unset.
      * Additional keys(other than known Row identifiers) are ignored.
      * <p>
      * This implementation iterates over the {@link Map.Entry}.
      * Performance is improved if additional keys are not passed.
-     * </p>
      *
-     * @param header The Column header to add to this Table
+     * @param header The Column header to add to this Table.
      * @param values A mapping between existing Row identifiers and their values under this Column.
-     *               Additional keys are ignored, missing keys are assumed to have value {@code null}.
+     *               Additional keys are ignored.
      * @throws DuplicateIdentifierException If this Table already contained a Column with the specified header.
      */
     @Override
     public void addColumn(C header, Map<R, V> values) throws DuplicateIdentifierException {
         if (headers.add(header)) {
-            values.forEach((identifier, value) -> {
-                if (identifiers.contains(identifier))
-                    set(header, identifier, value);
-            });
+            setColumn(header, values);
         } else {
-            throw new DuplicateIdentifierException("Column '" + header + "' already exists in this Table!");
+            throw new DuplicateIdentifierException(COLUMN + header + "' already exists in this Table!");
         }
 
     }
 
     /**
-     * Adds a new Row to this Table, and sets the value for all existing Columns to {@code null}
+     * Adds a new Row to this Table, and leaves the value for all existing Columns to remain unset.
      * If this Table already contains a Row with specified identifier, the call leaves the Table
      * unchanged and returns {@code false}
      *
@@ -88,34 +88,68 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
     }
 
     /**
-     * Adds a new Row to this Table, and sets the value for existing Columns to the value in the Map,
-     * keyed by it's header. Columns missing entries in the map is associated with {@code null}.
+     * Adds a new Row to this Table, and sets the value for existing Columns using the Map provided.
+     * Columns missing entries in the map are left unset.
      * Additional keys(other than known Column headers) are ignored.
      * <p>
      * This implementation iterates over the {@link Map.Entry}.
      * Performance is improved if additional keys are not passed.
-     * </p>
      *
-     * @param identifier The Row identifier to add to this Table
+     * @param identifier The Row identifier to add to this Table.
      * @param values     A mapping between existing Column headers and their values for this Row.
-     *                   Additional keys are ignored, missing keys are assumed to have value {@code null}.
+     *                   Additional keys are ignored.
      * @throws DuplicateIdentifierException If this Table already contained a Row with the specified identifier.
      */
     @Override
     public void addRow(R identifier, Map<C, V> values) throws DuplicateIdentifierException {
         if (identifiers.add(identifier)) {
-            values.forEach((header, value) -> {
-                if (headers.contains(header))
-                    set(header, identifier, value);
-            });
+            setRow(identifier, values);
         } else {
-            throw new DuplicateIdentifierException("Row '" + identifier + "' already exists in this Table!");
+            throw new DuplicateIdentifierException(ROW + identifier + "' already exists in this Table!");
+        }
+    }
+
+    /**
+     * Updates the specified Column of this Table, by setting the value for existing Rows using the Map provided.
+     * Rows missing entries in the map are left untouched.
+     * Additional keys(other than known Row identifiers) are ignored.
+     *
+     * @param header The header of the Column to update.
+     * @param values A mapping between existing Row identifiers and their values under this Column.
+     *               Additional keys are ignored.
+     * @throws NoSuchElementException If this Table already contained a Column with the specified header.
+     */
+    @Override
+    public void updateColumn(C header, Map<R, V> values) throws NoSuchElementException {
+        if (containsColumn(header)) {
+            setColumn(header, values);
+        } else {
+            throw new NoSuchElementException(COLUMN + header + DOES_NOT_EXIST);
+        }
+    }
+
+    /**
+     * Updates the specified Row of this Table, by setting the value for existing Columns using the Map provided.
+     * Columns missing entries in the map are left untouched.
+     * Additional keys(other than known Column headers) are ignored.
+     *
+     * @param identifier The identifier of the Row to update.
+     * @param values     A mapping between existing Column headers and their values for this Row.
+     *                   Additional keys are ignored.
+     * @throws NoSuchElementException If this Table did not contain a Row with the specified identifier.
+     */
+    @Override
+    public void updateRow(R identifier, Map<C, V> values) throws NoSuchElementException {
+        if (containsRow(identifier)) {
+            setRow(identifier, values);
+        } else {
+            throw new NoSuchElementException(ROW + identifier + DOES_NOT_EXIST);
         }
     }
 
     /**
      * Returns a mapping between all known Columns and it's value for given Row identifier.
-     * Missing values are mapped to {@code null}.
+     * Columns for which value in the Table is unset are not included in the returned map.
      *
      * @param identifier The identifier for the Row to get.
      * @return a mapping between all known Columns and it's value for the identifier.
@@ -124,22 +158,22 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
     @Override
     public Map<C, V> getRow(R identifier) throws NoSuchElementException {
         if (!identifiers.contains(identifier))
-            throw new NoSuchElementException("Row '" + identifier + "' does not exist in this Table!");
-
-        // NOTE: Using Collectors.toMap(..) results in a NullPointerException, value of map is null.
-        // See https://bugs.openjdk.java.net/browse/JDK-8148463
+            throw new NoSuchElementException(ROW + identifier + DOES_NOT_EXIST);
         return headers
                 .stream()
                 .collect(
                         HashMap::new,
-                        (map, header) -> map.put(header, get(header, identifier)),
+                        (hashMap, header) -> {
+                            if (contains(header, identifier))
+                                hashMap.put(header, get(header, identifier));
+                        },
                         HashMap::putAll
                 );
     }
 
     /**
      * Returns a mapping between all known Rows and it's value for given Column header.
-     * Missing values are mapped to {@code null}.
+     * Rows for which value in the Table is unset are not included in the returned map.
      *
      * @param header The header for the Column to get.
      * @return a mapping between all known Rows and it's value under the header.
@@ -148,15 +182,16 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
     @Override
     public Map<R, V> getColumn(C header) throws NoSuchElementException {
         if (!headers.contains(header))
-            throw new NoSuchElementException("Column '" + header + "' does not exist in this Table!");
+            throw new NoSuchElementException(COLUMN + header + DOES_NOT_EXIST);
 
-        // NOTE: Using Collectors.toMap(..) results in a NullPointerException, value of map is null.
-        // See https://bugs.openjdk.java.net/browse/JDK-8148463
         return identifiers
                 .stream()
                 .collect(
                         HashMap::new,
-                        (map, identifier) -> map.put(identifier, get(header, identifier)),
+                        (hashMap, identifier) -> {
+                            if (contains(header, identifier))
+                                hashMap.put(identifier, get(header, identifier));
+                        },
                         HashMap::putAll
                 );
     }
@@ -179,17 +214,13 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
      * @param header       The Row identifier
      * @param identifier   The Column header
      * @param defaultValue The default value to return if Table does not contain value
-     * @return the value associated with given Column and Row. {@code null} is no such value exists.
+     * @return the value associated with given Column and Row. {@code defaultValue} is no such value exists.
      */
     @Override
     public V getOrElse(C header, R identifier, V defaultValue) {
         return contains(header, identifier)
                 ? get(header, identifier)
                 : defaultValue;
-    }
-
-    private Pair<C, R> getKey(C header, R identifier) {
-        return new Pair<>(header, identifier);
     }
 
     /**
@@ -203,10 +234,10 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
     @Override
     public void set(C header, R identifier, V value) throws NoSuchElementException {
         if (!headers.contains(header))
-            throw new NoSuchElementException("Column '" + header + "' does not exist in this Table!");
+            throw new NoSuchElementException(COLUMN + header + DOES_NOT_EXIST);
 
         if (!identifiers.contains(identifier))
-            throw new NoSuchElementException("Row '" + identifier + "' does not exist in this Table!");
+            throw new NoSuchElementException(ROW + identifier + DOES_NOT_EXIST);
 
         map.put(getKey(header, identifier), value);
     }
@@ -219,9 +250,17 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
      * @param header     The Column header
      * @param identifier The Row identifier
      * @return {@code true} if this Table contained the specified Column and Row.
+     * @throws NoSuchElementException if either of specified Column or Row does not exist in this Table.
      */
     @Override
-    public boolean clear(C header, R identifier) {
+    public boolean clear(C header, R identifier) throws NoSuchElementException {
+        if (!headers.contains(header))
+            throw new NoSuchElementException(COLUMN + header + DOES_NOT_EXIST);
+
+        if (!identifiers.contains(identifier))
+            throw new NoSuchElementException(ROW + identifier + DOES_NOT_EXIST);
+
+
         if (!contains(header, identifier))
             return false;
         set(header, identifier, null);
@@ -230,15 +269,16 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
 
     /**
      * Sets the value associated with all the existing Columns in this Table for specified Row to be {@code null}.
-     * If this Table did not contain the specified Row, the call leaves the Table unchanged and returns {@code false}
+     * If this Row did not contain any values, the call leaves the Table unchanged and returns {@code false}.
      *
      * @param identifier The identifier for the Row to clear.
-     * @return {@code true} if this Table contained the specified Row.
+     * @return {@code true} if the Row contained values for some Columns.
+     * @throws NoSuchElementException if the specified Row does not exist in this Table.
      */
     @Override
-    public boolean clearRow(R identifier) {
+    public boolean clearRow(R identifier) throws NoSuchElementException {
         if (!identifiers.contains(identifier))
-            return false;
+            throw new NoSuchElementException(ROW + identifier + DOES_NOT_EXIST);
 
         return headers.stream().map(header -> clear(header, identifier)).reduce(false, (a, b) -> a || b);
     }
@@ -246,15 +286,16 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
 
     /**
      * Sets the value associated with all the existing Rows in this Table for specified Column to be {@code null}.
-     * If this Table did not contain the specified Column, the call leaves the Table unchanged and returns {@code false}
+     * If this Column did not contain any values, the call leaves the Table unchanged and returns {@code false}.
      *
      * @param header The header for the Column to clear.
-     * @return {@code true} if this Table contained the specified Column.
+     * @return {@code true} if this Column contained values for some Rows.
+     * @throws NoSuchElementException if the specified Column does not exist in this Table.
      */
     @Override
     public boolean clearColumn(C header) {
         if (!headers.contains(header))
-            return false;
+            throw new NoSuchElementException(COLUMN + header + DOES_NOT_EXIST);
 
         return identifiers.stream().map(identifier -> clear(header, identifier)).reduce(false, (a, b) -> a || b);
     }
@@ -337,7 +378,7 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
     /**
      * Returns true if this Table contains a Row with the specified identifier.
      *
-     * @param identifier The identity of the Row to check existence.
+     * @param identifier The identifier of the Row to check existence.
      * @return {@code true} if the Table contains the specified Row.
      */
     @Override
@@ -357,6 +398,8 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
      */
     @Override
     public String representation(int width, String tableHeader) {
+
+        String lineSeparator = System.getProperty("line.separator");
 
         if (headers.isEmpty() || identifiers.isEmpty())
             return "Table has " + headers.size() + " Columns and " + identifiers.size() + " Rows.Add more data to visualize the Table";
@@ -381,7 +424,7 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
             boolean buildTop = top.length() == 0;
             if (buildTop) {
                 top.append(separator);
-                top.append("\n");
+                top.append(lineSeparator);
                 top.append("|");
                 top.append(representation(tableHeader, width));
             }
@@ -398,14 +441,14 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
             });
             if (buildTop) {
                 top.append("|");
-                top.append("\n");
+                top.append(lineSeparator);
                 top.append(separator);
             }
             row.append("|");
             return row.toString();
-        }).reduce((s1, s2) -> s1 + "\n" + s2).orElse("");
+        }).reduce((s1, s2) -> s1 + lineSeparator + s2).orElse("");
 
-        return top + "\n" + rows + "\n" + separator;
+        return top + lineSeparator + rows + lineSeparator + separator;
     }
 
     @Override
@@ -426,6 +469,24 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
         return representation(20);
     }
 
+    private void setRow(R identifier, Map<C, V> values) {
+        values.forEach((header, value) -> {
+            if (headers.contains(header))
+                set(header, identifier, value);
+        });
+    }
+
+    private void setColumn(C header, Map<R, V> values) {
+        values.forEach((identifier, value) -> {
+            if (identifiers.contains(identifier))
+                set(header, identifier, value);
+        });
+    }
+
+    private Pair<C, R> getKey(C header, R identifier) {
+        return new Pair<>(header, identifier);
+    }
+
     private String representation(String str, int target) {
         if (str.length() > target)
             return str.substring(0, target - 3) + "...";
@@ -442,7 +503,7 @@ public class PairedHashMapTable<V, C, R> implements Table<V, C, R> {
         String value = "";
         if (contains(header, identifier)) {
             V entry = get(header, identifier);
-            value = entry == null ? "null" : entry.toString();
+            value = entry == null ? "<<null>>" : entry.toString();
         }
 
         return representation(value, width);

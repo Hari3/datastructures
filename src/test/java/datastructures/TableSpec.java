@@ -3,19 +3,21 @@ package datastructures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public abstract class TableSpec {
+abstract class TableSpec {
 
-    Table<String, Integer, Long> table;
+    protected Table<String, Integer, Long> table;
 
-    abstract void setUp();
+    protected abstract Table<String, Integer, Long> getInstance();
 
     @BeforeEach
-    void runSetUp() {
-        setUp();
+    void setUp() {
+        table = getInstance();
     }
 
     @Test
@@ -88,19 +90,19 @@ public abstract class TableSpec {
         table.addRow(1L);
         table.addRow(2L);
 
-        Map<Long, String> row = new HashMap<>();
+        Map<Long, String> values = new HashMap<>();
 
-        row.put(1L, "21");
-        row.put(2L, "22");
-        row.put(4L, "24");
+        values.put(1L, "21");
+        values.put(2L, "22");
+        values.put(4L, "24");
         Set<Long> expectedRows = new HashSet<>();
         expectedRows.add(1L);
         expectedRows.add(2L);
 
-        assertThrows(DuplicateIdentifierException.class, () -> table.addColumn(1, row),
+        assertThrows(DuplicateIdentifierException.class, () -> table.addColumn(1, values),
                 "Expected Exception when adding duplicate Column with Row information");
         assertEquals(expectedColumns, table.getColumnHeaders());
-        assertDoesNotThrow(() -> table.addColumn(2, row));
+        assertDoesNotThrow(() -> table.addColumn(2, values));
         expectedColumns.add(2);
         assertEquals(expectedColumns, table.getColumnHeaders());
         assertEquals(expectedRows, table.getRowIdentifiers(),
@@ -117,25 +119,84 @@ public abstract class TableSpec {
         table.addColumn(1);
         table.addColumn(2);
 
-        Map<Integer, String> column = new HashMap<>();
+        Map<Integer, String> values = new HashMap<>();
 
-        column.put(1, "21");
-        column.put(2, "22");
-        column.put(4, "24");
+        values.put(1, "21");
+        values.put(2, "22");
+        values.put(4, "24");
         Set<Integer> expectedColumns = new HashSet<>();
         expectedColumns.add(1);
         expectedColumns.add(2);
 
-        assertThrows(DuplicateIdentifierException.class, () -> table.addRow(1L, column),
+        assertThrows(DuplicateIdentifierException.class, () -> table.addRow(1L, values),
                 "Expected Exception when adding duplicate Row with Column information");
         assertEquals(expectedRows, table.getRowIdentifiers());
-        assertDoesNotThrow(() -> table.addRow(2L, column));
+        assertDoesNotThrow(() -> table.addRow(2L, values));
         expectedRows.add(2L);
         assertEquals(expectedRows, table.getRowIdentifiers());
         assertEquals(expectedColumns, table.getColumnHeaders(),
                 "Expected invalid Column headers to be ignored");
 
 
+    }
+
+    @Test
+    void tableShouldUpdateColumnsWithValuesForRows() {
+        table.addColumn(1);
+        table.addRow(1L);
+        table.addRow(2L);
+
+        Map<Long, String> values = new HashMap<>();
+
+        values.put(1L, "21");
+        values.put(2L, "22");
+
+        assertDoesNotThrow(() -> table.addColumn(2, values));
+
+        assertEquals(values, table.getColumn(2));
+
+        values.put(1L, "2112");
+        values.put(2L, "2211");
+        values.put(4L, "2414");
+
+        Map<Long, String> expected = new HashMap<>();
+        expected.put(1L, "2112");
+        expected.put(2L, "2211");
+
+        assertDoesNotThrow(() -> table.updateColumn(2, values));
+
+        assertEquals(expected, table.getColumn(2));
+
+
+    }
+
+    @Test
+    void tableShouldUpdateRowsWithValuesForColumns() {
+
+        table.addRow(1L);
+        table.addColumn(1);
+        table.addColumn(2);
+
+        Map<Integer, String> values = new HashMap<>();
+
+        values.put(1, "21");
+        values.put(2, "22");
+
+        assertDoesNotThrow(() -> table.addRow(2L, values));
+        assertEquals(values, table.getRow(2L));
+
+        values.put(1, "2121");
+        values.put(2, "2222");
+        values.put(4, "2424");
+
+        assertDoesNotThrow(() -> table.updateRow(2L, values));
+
+        Map<Integer, String> expected = new HashMap<>();
+
+        expected.put(1, "2121");
+        expected.put(2, "2222");
+
+        assertEquals(expected, table.getRow(2L));
     }
 
     @Test
@@ -153,12 +214,11 @@ public abstract class TableSpec {
         Map<Integer, String> expected = new HashMap<>();
 
         expected.put(1, "11");
-        expected.put(2, null);
         expected.put(4, "41");
         assertEquals(expected, table.getRow(1L));
 
-        expected.put(1, null);
-        expected.put(4, null);
+        expected.remove(1);
+        expected.remove(4);
         assertEquals(expected, table.getRow(2L));
 
         assertThrows(NoSuchElementException.class, () -> table.getRow(3L),
@@ -180,12 +240,11 @@ public abstract class TableSpec {
         Map<Long, String> expected = new HashMap<>();
 
         expected.put(1L, "11");
-        expected.put(2L, null);
         expected.put(4L, "14");
         assertEquals(expected, table.getColumn(1));
 
-        expected.put(1L, null);
-        expected.put(4L, null);
+        expected.remove(1L);
+        expected.remove(4L);
         assertEquals(expected, table.getColumn(2));
 
         assertThrows(NoSuchElementException.class, () -> table.getColumn(3),
@@ -236,7 +295,7 @@ public abstract class TableSpec {
     }
 
     @Test
-    public void tableShouldAcceptValueForSpecifiedColumnAndRow() {
+    void tableShouldAcceptValueForSpecifiedColumnAndRow() {
         table.addColumn(1);
         table.addRow(3L);
 
@@ -246,7 +305,7 @@ public abstract class TableSpec {
     }
 
     @Test
-    public void tableShouldClearValueForSpecifiedColumnAndRow() {
+    void tableShouldClearValueForSpecifiedColumnAndRow() {
         table.addColumn(1);
         table.addRow(3L);
 
@@ -254,11 +313,13 @@ public abstract class TableSpec {
         assertEquals("13", table.get(1, 3L));
         table.clear(1, 3L);
         assertNull(table.get(1, 3L));
+        assertThrows(NoSuchElementException.class, () -> table.clear(1, 4L), "Expected Exception when clearing non existing Row");
+        assertThrows(NoSuchElementException.class, () -> table.clear(2, 3L), "Expected Exception when clearing non existing Column");
 
     }
 
     @Test
-    public void tableShouldClearValuesForSpecifiedRow() {
+    void tableShouldClearValuesForSpecifiedRow() {
         table.addColumn(1);
         table.addColumn(2);
         table.addRow(3L);
@@ -271,7 +332,7 @@ public abstract class TableSpec {
         table.set(2, 4L, "24");
 
         assertTrue(table.clearRow(3L));
-        assertFalse(table.clearRow(5L), "Expected false when clearing non existing Row");
+        assertThrows(NoSuchElementException.class, () -> table.clearRow(5L), "Expected exception when clearing non existing Row");
         assertFalse(table.clearRow(6L), "Expected false when clearing empty Row");
 
         assertNull(table.get(1, 3L));
@@ -282,7 +343,7 @@ public abstract class TableSpec {
     }
 
     @Test
-    public void tableShouldClearValuesForSpecifiedColumn() {
+    void tableShouldClearValuesForSpecifiedColumn() {
         table.addColumn(1);
         table.addColumn(2);
         table.addColumn(6);
@@ -295,7 +356,7 @@ public abstract class TableSpec {
         table.set(2, 4L, "24");
 
         assertTrue(table.clearColumn(1));
-        assertFalse(table.clearColumn(5), "Expected false when clearing non existing Column");
+        assertThrows(NoSuchElementException.class, () -> table.clearColumn(5), "Expected exception when clearing non existing Column");
         assertFalse(table.clearColumn(6), "Expected false when clearing empty Column");
 
         assertNull(table.get(1, 3L));
@@ -306,7 +367,7 @@ public abstract class TableSpec {
     }
 
     @Test
-    public void tableShouldRemoveSpecifiedRow() {
+    void tableShouldRemoveSpecifiedRow() {
         table.addColumn(1);
         table.addColumn(2);
         table.addRow(3L);
@@ -335,7 +396,7 @@ public abstract class TableSpec {
     }
 
     @Test
-    public void tableShouldRemoveSpecifiedColumn() {
+    void tableShouldRemoveSpecifiedColumn() {
         table.addColumn(1);
         table.addColumn(2);
         table.addColumn(6);
@@ -364,7 +425,7 @@ public abstract class TableSpec {
     }
 
     @Test
-    public void tableShouldCheckAvailabilityForValueInSpecifiedColumnAndRow() {
+    void tableShouldCheckAvailabilityForValueInSpecifiedColumnAndRow() {
         table.addColumn(1);
         table.addColumn(2);
         table.addRow(3L);
@@ -378,6 +439,45 @@ public abstract class TableSpec {
         assertTrue(table.contains(1, 4L), "Expected true when value was null.");
         assertTrue(table.contains(2, 3L));
         assertFalse(table.contains(2, 4L));
+
+    }
+
+    @Test
+    void tableShouldDisplayItsContentsInTheConsole() {
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintStream old = System.out;
+        System.setOut(new PrintStream(out));
+
+
+        String expected = table.representation(20) + System.getProperty("line.separator");
+        table.show();
+
+        table.addColumn(123456);
+        table.addColumn(234567);
+        table.addRow(345678L);
+        table.addRow(45789L);
+
+        table.set(123456, 345678L, "13");
+        table.set(123456, 45789L, null);
+        table.set(234567, 345678L, "null");
+
+
+        expected +=
+                table.representation(20) + System.getProperty("line.separator") +
+                        table.representation(5) + System.getProperty("line.separator") +
+                        table.representation(20, "header") + System.getProperty("line.separator") +
+                        table.representation(5, "header") + System.getProperty("line.separator");
+
+
+        table.show();
+        table.show(5);
+        table.show("header");
+        table.show(5, "header");
+        System.setOut(old);
+        String actual = out.toString();
+        assertEquals(expected, actual);
+
 
     }
 }

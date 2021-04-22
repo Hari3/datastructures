@@ -8,7 +8,9 @@ import java.util.Set;
  * A data structure which maintains it's values in a tabular form.
  * Each element in the Table is associated with a Row and a Column.
  * Table supports {@code null}s for values.
+ * <p>
  * All Column headers are unique
+ * <p>
  * All Row identifiers are unique
  *
  * @param <V> The type of values stored in this Table.
@@ -29,19 +31,19 @@ public interface Table<V, C, R> {
     boolean addColumn(C header);
 
     /**
-     * Adds a new Column to this Table, and sets the value for existing Rows to the value in the Map,
-     * keyed by it's identifier. Rows missing entries in the map is associated with {@code null}.
+     * Adds a new Column to this Table, and sets the value for existing Rows using the Map provided.
+     * Rows missing entries in the map are left unset.
      * Additional keys(other than known Row identifiers) are ignored.
      *
-     * @param header The Column header to add to this Table
+     * @param header The Column header to add to this Table.
      * @param values A mapping between existing Row identifiers and their values under this Column.
-     *               Additional keys are ignored, missing keys are assumed to have value {@code null}.
+     *               Additional keys are ignored.
      * @throws DuplicateIdentifierException If this Table already contained a Column with the specified header.
      */
     void addColumn(C header, Map<R, V> values) throws DuplicateIdentifierException;
 
     /**
-     * Adds a new Row to this Table, and leaves the value for all existing Columns to remain unset
+     * Adds a new Row to this Table, and leaves the value for all existing Columns to remain unset.
      * If this Table already contains a Row with specified identifier, the call leaves the Table
      * unchanged and returns {@code false}
      *
@@ -51,20 +53,44 @@ public interface Table<V, C, R> {
     boolean addRow(R identifier);
 
     /**
-     * Adds a new Row to this Table, and sets the value for existing Columns to the value in the Map,
-     * keyed by it's header. Columns missing entries in the map is associated with {@code null}.
+     * Adds a new Row to this Table, and sets the value for existing Columns using the Map provided.
+     * Columns missing entries in the map are left unset.
      * Additional keys(other than known Column headers) are ignored.
      *
-     * @param identifier The Row identifier to add to this Table
+     * @param identifier The Row identifier to add to this Table.
      * @param values     A mapping between existing Column headers and their values for this Row.
-     *                   Additional keys are ignored, missing keys are assumed to have value {@code null}.
+     *                   Additional keys are ignored.
      * @throws DuplicateIdentifierException If this Table already contained a Row with the specified identifier.
      */
     void addRow(R identifier, Map<C, V> values) throws DuplicateIdentifierException;
 
     /**
+     * Updates the specified Column of this Table, by setting the value for existing Rows using the Map provided.
+     * Rows missing entries in the map are left untouched.
+     * Additional keys(other than known Row identifiers) are ignored.
+     *
+     * @param header The header of the Column to update.
+     * @param values A mapping between existing Row identifiers and their values under this Column.
+     *               Additional keys are ignored.
+     * @throws NoSuchElementException If this Table already contained a Column with the specified header.
+     */
+    void updateColumn(C header, Map<R, V> values) throws NoSuchElementException;
+
+    /**
+     * Updates the specified Row of this Table, by setting the value for existing Columns using the Map provided.
+     * Columns missing entries in the map are left untouched.
+     * Additional keys(other than known Column headers) are ignored.
+     *
+     * @param identifier The identifier of the Row to update.
+     * @param values     A mapping between existing Column headers and their values for this Row.
+     *                   Additional keys are ignored.
+     * @throws NoSuchElementException If this Table did not contain a Row with the specified identifier.
+     */
+    void updateRow(R identifier, Map<C, V> values) throws NoSuchElementException;
+
+    /**
      * Returns a mapping between all known Columns and it's value for given Row identifier.
-     * Missing values are mapped to {@code null}.
+     * Columns for which value in the Table is unset are not included in the returned map.
      *
      * @param identifier The identifier for the Row to get.
      * @return a mapping between all known Columns and it's value for the identifier.
@@ -74,7 +100,7 @@ public interface Table<V, C, R> {
 
     /**
      * Returns a mapping between all known Rows and it's value for given Column header.
-     * Missing values are mapped to {@code null}.
+     * Rows for which value in the Table is unset are not included in the returned map.
      *
      * @param header The header for the Column to get.
      * @return a mapping between all known Rows and it's value under the header.
@@ -97,10 +123,9 @@ public interface Table<V, C, R> {
      * @param header       The Row identifier
      * @param identifier   The Column header
      * @param defaultValue The default value to return if Table does not contain value
-     * @return the value associated with given Column and Row. {@code null} is no such value exists.
+     * @return the value associated with given Column and Row. {@code defaultValue} is no such value exists.
      */
     V getOrElse(C header, R identifier, V defaultValue);
-
 
     /**
      * Associate the specified value with the specified Column and Row.
@@ -120,26 +145,29 @@ public interface Table<V, C, R> {
      * @param header     The Column header
      * @param identifier The Row identifier
      * @return {@code true} if this Table contained the specified Column and Row.
+     * @throws NoSuchElementException if either of specified Column or Row does not exist in this Table.
      */
-    boolean clear(C header, R identifier);
+    boolean clear(C header, R identifier) throws NoSuchElementException;
 
     /**
      * Sets the value associated with all the existing Columns in this Table for specified Row to be {@code null}.
-     * If this Table did not contain the specified Row, the call leaves the Table unchanged and returns {@code false}
+     * If this Row did not contain any values, the call leaves the Table unchanged and returns {@code false}.
      *
      * @param identifier The identifier for the Row to clear.
-     * @return {@code true} if this Table contained the specified Row.
+     * @return {@code true} if the Row contained values for some Columns.
+     * @throws NoSuchElementException if the specified Row does not exist in this Table.
      */
-    boolean clearRow(R identifier);
+    boolean clearRow(R identifier) throws NoSuchElementException;
 
     /**
      * Sets the value associated with all the existing Rows in this Table for specified Column to be {@code null}.
-     * If this Table did not contain the specified Column, the call leaves the Table unchanged and returns {@code false}
+     * If this Column did not contain any values, the call leaves the Table unchanged and returns {@code false}.
      *
      * @param header The header for the Column to clear.
-     * @return {@code true} if this Table contained the specified Column.
+     * @return {@code true} if this Column contained values for some Rows.
+     * @throws NoSuchElementException if the specified Column does not exist in this Table.
      */
-    boolean clearColumn(C header);
+    boolean clearColumn(C header) throws NoSuchElementException;
 
     /**
      * Removes the specified Row from this Table.
@@ -212,10 +240,22 @@ public interface Table<V, C, R> {
     /**
      * Display the contents of this Table in the console, with an empty Header.
      *
-     * @param width The desired width od each cell.
+     * @param width The desired width of each cell.
      */
+    @SuppressWarnings("java:S106")
     default void show(int width) {
         System.out.println(representation(width));
+    }
+
+    /**
+     * Display the contents of this Table in the console, with an provided Header.
+     * Each cell is 20 characters wide.
+     *
+     * @param header The header to display.
+     */
+    @SuppressWarnings("java:S106")
+    default void show(String header) {
+        System.out.println(representation(20, header));
     }
 
     /**
@@ -228,7 +268,7 @@ public interface Table<V, C, R> {
      *
      * @param width The desired width od each cell.
      */
-
+    @SuppressWarnings("java:S106")
     default void show(int width, String tableHeader) {
         System.out.println(representation(width, tableHeader));
     }
