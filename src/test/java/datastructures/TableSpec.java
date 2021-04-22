@@ -7,13 +7,15 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TableSpec {
+public abstract class TableSpec {
 
     Table<String, Integer, Long> table;
 
+    abstract void setUp();
+
     @BeforeEach
-    void setUp() {
-        table = new PairedHashMapTable<>();
+    void runSetUp() {
+        setUp();
     }
 
     @Test
@@ -300,6 +302,82 @@ public class TableSpec {
         assertNull(table.get(1, 4L));
         assertEquals("23", table.get(2, 3L));
         assertEquals("24", table.get(2, 4L));
+
+    }
+
+    @Test
+    public void tableShouldRemoveSpecifiedRow() {
+        table.addColumn(1);
+        table.addColumn(2);
+        table.addRow(3L);
+        table.addRow(4L);
+        table.addRow(6L);
+
+        table.set(1, 3L, "13");
+        table.set(1, 4L, "14");
+        table.set(2, 3L, "23");
+        table.set(2, 4L, "24");
+
+        assertTrue(table.removeRow(3L));
+        assertFalse(table.removeRow(5L), "Expected false when removing non existing Row");
+        assertTrue(table.removeRow(6L), "Expected true when removing empty Row");
+
+        assertFalse(table.containsRow(3L));
+        assertTrue(table.containsRow(4L));
+        assertFalse(table.containsRow(5L));
+        assertFalse(table.containsRow(6L));
+
+        assertFalse(table.contains(1, 3L));
+        assertFalse(table.contains(2, 3L));
+        assertEquals("14", table.get(1, 4L));
+        assertEquals("24", table.get(2, 4L));
+
+    }
+
+    @Test
+    public void tableShouldRemoveSpecifiedColumn() {
+        table.addColumn(1);
+        table.addColumn(2);
+        table.addColumn(6);
+        table.addRow(3L);
+        table.addRow(4L);
+
+        table.set(1, 3L, "13");
+        table.set(1, 4L, "14");
+        table.set(2, 3L, "23");
+        table.set(2, 4L, "24");
+
+        assertTrue(table.removeColumn(1));
+        assertFalse(table.removeColumn(5), "Expected false when removing non existing Column");
+        assertTrue(table.removeColumn(6), "Expected true when removing empty Column");
+
+        assertFalse(table.containsColumn(1));
+        assertTrue(table.containsColumn(2));
+        assertFalse(table.containsColumn(5));
+        assertFalse(table.containsColumn(6));
+
+        assertFalse(table.contains(1, 3L));
+        assertFalse(table.contains(1, 4L));
+        assertEquals("23", table.get(2, 3L));
+        assertEquals("24", table.get(2, 4L));
+
+    }
+
+    @Test
+    public void tableShouldCheckAvailabilityForValueInSpecifiedColumnAndRow() {
+        table.addColumn(1);
+        table.addColumn(2);
+        table.addRow(3L);
+        table.addRow(4L);
+
+        table.set(1, 3L, "13");
+        table.set(1, 4L, null);
+        table.set(2, 3L, "null");
+
+        assertTrue(table.contains(1, 3L));
+        assertTrue(table.contains(1, 4L), "Expected true when value was null.");
+        assertTrue(table.contains(2, 3L));
+        assertFalse(table.contains(2, 4L));
 
     }
 }
