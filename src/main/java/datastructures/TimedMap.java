@@ -1,9 +1,6 @@
 package datastructures;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * An Implementation a Map with the notion of Time.
@@ -43,11 +40,8 @@ public class TimedMap<K, V, T extends Comparable<T>> {
      * {@code null} if this map contains no mapping for the key at the specified time or earlier.
      */
     public V get(K key, T time) {
-        try {
-            return map.get(key).floorEntry(time).getValue();
-        } catch (NullPointerException ex) {
-            return null;
-        }
+        Map.Entry<T, V> entry = map.getOrDefault(key, Collections.emptyNavigableMap()).floorEntry(time);
+        return entry == null ? null : entry.getValue();
     }
 
 }
