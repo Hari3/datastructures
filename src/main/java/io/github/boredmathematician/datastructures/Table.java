@@ -1,4 +1,4 @@
-package datastructures;
+package io.github.boredmathematician.datastructures;
 
 import java.util.Map;
 import java.util.NoSuchElementException;

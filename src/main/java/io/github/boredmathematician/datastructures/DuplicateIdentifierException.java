@@ -1,4 +1,4 @@
-package datastructures;
+package io.github.boredmathematician.datastructures;
 
 public class DuplicateIdentifierException extends Exception {
 

@@ -1,4 +1,4 @@
-package datastructures;
+package io.github.boredmathematician.datastructures;
 
 import javafx.util.Pair;
 

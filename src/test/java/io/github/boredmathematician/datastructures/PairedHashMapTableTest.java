@@ -1,4 +1,4 @@
-package datastructures;
+package io.github.boredmathematician.datastructures;
 
 import org.junit.jupiter.api.Test;
 
