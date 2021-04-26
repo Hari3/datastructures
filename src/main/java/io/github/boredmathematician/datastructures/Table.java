@@ -266,7 +266,8 @@ public interface Table<V, C, R> {
      * padded with enough spaces so that the width of the cell matches the supplied width.
      * If representation is more that the supplied characters long, the first {@code width - 3} characters are displayed followed by {@code ...}
      *
-     * @param width The desired width od each cell.
+     * @param width       The desired width od each cell.
+     * @param tableHeader The title of the table. This is displayed in the empty space, at the nexus of Column and Row headers
      */
     @SuppressWarnings("java:S106")
     default void show(int width, String tableHeader) {
@@ -277,6 +278,7 @@ public interface Table<V, C, R> {
      * Returns the representation of this Table, with a blank title
      *
      * @param width The desired width od each cell.
+     * @return A String representation of the Table.
      */
     default String representation(int width) {
         StringBuilder header = new StringBuilder();
@@ -293,7 +295,9 @@ public interface Table<V, C, R> {
      * padded with enough spaces so that the width of the 'cell' matches the supplied width.
      * If representation is more that the supplied characters long, the first {@code width - 3} characters are used followed by {@code ...}
      *
-     * @param width The desired width od each cell.
+     * @param width       The desired width od each cell.
+     * @param tableHeader The title of the table. This is displayed in the empty space, at the nexus of Column and Row headers
+     * @return A String representation of the Table.
      */
     String representation(int width, String tableHeader);
 
