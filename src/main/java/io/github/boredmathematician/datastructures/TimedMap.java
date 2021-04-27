@@ -508,7 +508,7 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
      * time(or is mapped to {@code null}), associates it with the given value and returns
      * {@code null}, else returns the current value.
      * <p>
-     * Note that the defination of "absence" as defined in Javadoc of this class is used.
+     * Note that the definition of "absence" as defined in Javadoc of this class is used.
      *
      * @param key   key with which the specified value is to be associated
      * @param time  the point in time when this association should happen
@@ -533,7 +533,7 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
      * to {@code null}) associates it with the given value and returns
      * {@code null}, else returns the current value.
      * <p>
-     * Note that the defination of "absence" as defined in Javadoc of this class is used.
+     * Note that the definition of "absence" as defined in Javadoc of this class is used.
      *
      * @param key   key with which the specified value is to be associated
      * @param value value to be associated with the specified key
@@ -581,117 +581,82 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
 
     /**
      * Replaces the entry for the specified key only if currently
+     * mapped to the specified value at the specified time.
+     *
+     * @param key      key with which the specified value is associated
+     * @param time     the point in time for the expected association
+     * @param oldValue value expected to be associated with the specified key
+     * @param newValue value to be associated with the specified key
+     * @return {@code true} if the value was replaced
+     */
+    default boolean replace(K key, T time, V oldValue, V newValue) {
+        boolean changed = containsKey(key, time) && get(key, time).equals(oldValue);
+        if (changed) {
+            put(key, time, newValue);
+        }
+        return changed;
+    }
+
+    /**
+     * Replaces the entry for the specified instance of {@link Key} only if currently
      * mapped to the specified value.
      *
      * @param key      key with which the specified value is associated
      * @param oldValue value expected to be associated with the specified key
      * @param newValue value to be associated with the specified key
      * @return {@code true} if the value was replaced
-     * <p>
-     * The default implementation does not throw NullPointerException
-     * for maps that do not support null values if oldValue is null unless
-     * newValue is also null.
-     *
-     * <p>The default implementation makes no guarantees about synchronization
-     * or atomicity properties of this method. Any implementation providing
-     * atomicity guarantees must override this method and document its
-     * concurrency properties.
      */
-    default boolean replace(K key, T time, V oldValue, V newValue) {
-        if (containsKey(key, time)) {
-            V curValue = get(key, time);
-            boolean changed = curValue.equals(oldValue);
-            if (changed) {
-                put(key, time, newValue);
-            }
-            return changed;
-        } else return false;
-    }
-
     default boolean replace(Key<K, T> key, V oldValue, V newValue) {
         return replace(key.getKey(), key.getTime(), oldValue, newValue);
     }
 
     /**
      * Replaces the entry for the specified key only if it is
-     * currently mapped to some value.
+     * mapped to some value at the specified time.
      *
-     * @param key   key with which the specified value is associated
+     * @param key   key with which the specified value is to be associated
+     * @param time  the point in time for association
      * @param value value to be associated with the specified key
      * @return the previous value associated with the specified key, or
      * {@code null} if there was no mapping for the key.
      * (A {@code null} return can also indicate that the map
      * previously associated {@code null} with the key,
      * if the implementation supports null values.)
-     *
-     * <p>The default implementation makes no guarantees about synchronization
-     * or atomicity properties of this method. Any implementation providing
-     * atomicity guarantees must override this method and document its
-     * concurrency properties.
      */
     default V replace(K key, T time, V value) {
         return (containsKey(key, time)) ? put(key, time, value) : null;
     }
 
+    /**
+     * Replaces the entry for the specified instance of {@link Key} only
+     * if it is currently mapped to some value.
+     *
+     * @param key   key with which the specified value is to be associated
+     * @param value value to be associated with the specified key
+     * @return the previous value associated with the specified key, or
+     * {@code null} if there was no mapping for the key.
+     * (A {@code null} return can also indicate that the map
+     * previously associated {@code null} with the key,
+     * if the implementation supports null values.)
+     */
     default V replace(Key<K, T> key, V value) {
         return replace(key.getKey(), key.getTime(), value);
     }
 
     /**
-     * If the specified key is not already associated with a value (or is mapped
+     * If a mapping for specified key, at the specified time is "absent", or is mapped
      * to {@code null}), attempts to compute its value using the given mapping
      * function and enters it into this map unless {@code null}.
      *
      * <p>If the function returns {@code null} no mapping is recorded. If
      * the function itself throws an (unchecked) exception, the
-     * exception is rethrown, and no mapping is recorded.  The most
-     * common usage is to construct a new object serving as an initial
-     * mapped value or memoized result, as in:
-     *
-     * <pre> {@code
-     * map.computeIfAbsent(key, k -> new Value(f(k)));
-     * }</pre>
-     *
-     * <p>Or to implement a multi-value map, {@code Map<K,Collection<V>>},
-     * supporting multiple values per key:
-     *
-     * <pre> {@code
-     * map.computeIfAbsent(key, k -> new HashSet<V>()).add(v);
-     * }</pre>
+     * exception is rethrown, and no mapping is recorded.
      *
      * @param key             key with which the specified value is to be associated
+     * @param time            the point in time for this association
      * @param mappingFunction the function to compute a value
      * @return the current (existing or computed) value associated with
      * the specified key, or null if the computed value is null
-     * @throws NullPointerException          if the specified key is null and
-     *                                       this map does not support null keys, or the mappingFunction
-     *                                       is null
-     * @throws UnsupportedOperationException if the {@code put} operation
-     *                                       is not supported by this map
-     *                                       (<a href="{@docRoot}/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws ClassCastException            if the class of the specified key or value
-     *                                       prevents it from being stored in this map
-     *                                       (<a href="{@docRoot}/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @implSpec The default implementation is equivalent to the following steps for this
-     * {@code map}, then returning the current value or {@code null} if now
-     * absent:
-     *
-     * <pre> {@code
-     * if (map.get(key) == null) {
-     *     V newValue = mappingFunction.apply(key);
-     *     if (newValue != null)
-     *         map.put(key, newValue);
-     * }
-     * }</pre>
-     *
-     * <p>The default implementation makes no guarantees about synchronization
-     * or atomicity properties of this method. Any implementation providing
-     * atomicity guarantees must override this method and document its
-     * concurrency properties. In particular, all implementations of
-     * subinterface {@link java.util.concurrent.ConcurrentMap} must document
-     * whether the function is applied once atomically only if the value is not
-     * present.
-     * @since 1.8
      */
     default V computeIfAbsent(K key, T time,
                               BiFunction<? super K, ? super T, ? extends V> mappingFunction) {
@@ -708,6 +673,20 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
         return v;
     }
 
+    /**
+     * If a mapping for specified instance of {@link Key} is "absent", or is mapped
+     * to {@code null}), attempts to compute its value using the given mapping
+     * function and enters it into this map unless {@code null}.
+     *
+     * <p>If the function returns {@code null} no mapping is recorded. If
+     * the function itself throws an (unchecked) exception, the
+     * exception is rethrown, and no mapping is recorded.
+     *
+     * @param key             key with which the specified value is to be associated
+     * @param mappingFunction the function to compute a value
+     * @return the current (existing or computed) value associated with
+     * the specified key, or null if the computed value is null
+     */
     default V computeIfAbsent(Key<K, T> key,
                               Function<Key<? super K, ? super T>, ? extends V> mappingFunction) {
         Objects.requireNonNull(mappingFunction);
@@ -724,8 +703,9 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
     }
 
     /**
-     * If the value for the specified key is present and non-null, attempts to
-     * compute a new mapping given the key and its current mapped value.
+     * If the value for the specified key is present and non-null at
+     * the specified time, attempts to compute a new mapping given
+     * the key, the point in time and its current mapped value.
      *
      * <p>If the function returns {@code null}, the mapping is removed.  If the
      * function itself throws an (unchecked) exception, the exception is
@@ -734,38 +714,6 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
      * @param key               key with which the specified value is to be associated
      * @param remappingFunction the function to compute a value
      * @return the new value associated with the specified key, or null if none
-     * @throws NullPointerException          if the specified key is null and
-     *                                       this map does not support null keys, or the
-     *                                       remappingFunction is null
-     * @throws UnsupportedOperationException if the {@code put} operation
-     *                                       is not supported by this map
-     *                                       (<a href="{@docRoot}/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws ClassCastException            if the class of the specified key or value
-     *                                       prevents it from being stored in this map
-     *                                       (<a href="{@docRoot}/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @implSpec The default implementation is equivalent to performing the following
-     * steps for this {@code map}, then returning the current value or
-     * {@code null} if now absent:
-     *
-     * <pre> {@code
-     * if (map.get(key) != null) {
-     *     V oldValue = map.get(key);
-     *     V newValue = remappingFunction.apply(key, oldValue);
-     *     if (newValue != null)
-     *         map.put(key, newValue);
-     *     else
-     *         map.remove(key);
-     * }
-     * }</pre>
-     *
-     * <p>The default implementation makes no guarantees about synchronization
-     * or atomicity properties of this method. Any implementation providing
-     * atomicity guarantees must override this method and document its
-     * concurrency properties. In particular, all implementations of
-     * subinterface {@link java.util.concurrent.ConcurrentMap} must document
-     * whether the function is applied once atomically only if the value is not
-     * present.
-     * @since 1.8
      */
     default V computeIfPresent(K key, T time,
                                TriFunction<? super K, ? super T, ? super V, ? extends V> remappingFunction) {
@@ -782,6 +730,19 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
         } else return null;
     }
 
+    /**
+     * If the value for the specified instance of {@link Key} is
+     * present and non-null, attempts to compute a new mapping given
+     * the key and its current mapped value.
+     *
+     * <p>If the function returns {@code null}, the mapping is removed.  If the
+     * function itself throws an (unchecked) exception, the exception is
+     * rethrown, and the current mapping is left unchanged.
+     *
+     * @param key               key with which the specified value is to be associated
+     * @param remappingFunction the function to compute a value
+     * @return the new value associated with the specified key, or null if none
+     */
     default V computeIfPresent(Key<K, T> key,
                                BiFunction<Key<? super K, ? super T>, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
@@ -799,59 +760,16 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
 
     /**
      * Attempts to compute a mapping for the specified key and its current
-     * mapped value (or {@code null} if there is no current mapping). For
-     * example, to either create or append a {@code String} msg to a value
-     * mapping:
-     *
-     * <pre> {@code
-     * map.compute(key, (k, v) -> (v == null) ? msg : v.concat(msg))}</pre>
-     * (Method {@link #merge merge()} is often simpler to use for such purposes.)
+     * mapped value, at the specified time (or {@code null} if there is no current mapping).
      *
      * <p>If the function returns {@code null}, the mapping is removed (or
-     * remains absent if initially absent).  If the function itself throws an
+     * remains "absent" if initially "absent").  If the function itself throws an
      * (unchecked) exception, the exception is rethrown, and the current mapping
      * is left unchanged.
      *
      * @param key               key with which the specified value is to be associated
      * @param remappingFunction the function to compute a value
      * @return the new value associated with the specified key, or null if none
-     * @throws NullPointerException          if the specified key is null and
-     *                                       this map does not support null keys, or the
-     *                                       remappingFunction is null
-     * @throws UnsupportedOperationException if the {@code put} operation
-     *                                       is not supported by this map
-     *                                       (<a href="{@docRoot}/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws ClassCastException            if the class of the specified key or value
-     *                                       prevents it from being stored in this map
-     *                                       (<a href="{@docRoot}/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @implSpec The default implementation is equivalent to performing the following
-     * steps for this {@code map}, then returning the current value or
-     * {@code null} if absent:
-     *
-     * <pre> {@code
-     * V oldValue = map.get(key);
-     * V newValue = remappingFunction.apply(key, oldValue);
-     * if (oldValue != null ) {
-     *    if (newValue != null)
-     *       map.put(key, newValue);
-     *    else
-     *       map.remove(key);
-     * } else {
-     *    if (newValue != null)
-     *       map.put(key, newValue);
-     *    else
-     *       return null;
-     * }
-     * }</pre>
-     *
-     * <p>The default implementation makes no guarantees about synchronization
-     * or atomicity properties of this method. Any implementation providing
-     * atomicity guarantees must override this method and document its
-     * concurrency properties. In particular, all implementations of
-     * subinterface {@link java.util.concurrent.ConcurrentMap} must document
-     * whether the function is applied once atomically only if the value is not
-     * present.
-     * @since 1.8
      */
     default V compute(K key, T time,
                       TriFunction<? super K, ? super T, ? super V, ? extends V> remappingFunction) {
@@ -870,6 +788,19 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
         return newValue;
     }
 
+    /**
+     * Attempts to compute a mapping for the specified instance of {@link Key}
+     * and its current mapped value (or {@code null} if there is no current mapping).
+     *
+     * <p>If the function returns {@code null}, the mapping is removed (or
+     * remains "absent" if initially "absent").  If the function itself throws an
+     * (unchecked) exception, the exception is rethrown, and the current mapping
+     * is left unchanged.
+     *
+     * @param key               key with which the specified value is to be associated
+     * @param remappingFunction the function to compute a value
+     * @return the new value associated with the specified key, or null if none
+     */
     default V compute(Key<K, T> key,
                       BiFunction<Key<? super K, ? super T>, ? super V, ? extends V> remappingFunction) {
 
@@ -888,17 +819,49 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
     }
 
     /**
-     * If the specified key is not already associated with a value or is
-     * associated with null, associates it with the given non-null value.
-     * Otherwise, replaces the associated value with the results of the given
-     * remapping function, or removes if the result is {@code null}. This
-     * method may be of use when combining multiple mapped values for a key.
-     * For example, to either create or append a {@code String msg} to a
-     * value mapping:
+     * If the specified key is not already associated with a value at the
+     * specified time or is associated with null, associates it with the
+     * given non-null value. Otherwise, replaces the associated value
+     * with the results of the given remapping function, or removes if
+     * the result is {@code null}. This method may be of use when
+     * combining multiple mapped values for a key.
      *
-     * <pre> {@code
-     * map.merge(key, msg, String::concat)
-     * }</pre>
+     * <p>If the function returns {@code null} the mapping is removed.  If the
+     * function itself throws an (unchecked) exception, the exception is
+     * rethrown, and the current mapping is left unchanged.
+     *
+     * @param key               key with which the resulting value is to be associated
+     * @param time              the point in time for the association
+     * @param value             the non-null value to be merged with the existing value
+     *                          associated with the key or, if no existing value or a null value
+     *                          is associated with the key, to be associated with the key
+     * @param remappingFunction the function to recompute a value if present
+     * @return the new value associated with the specified key, or null if no
+     * value is associated with the key
+     */
+    default V merge(K key, T time, V value,
+                    BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        Objects.requireNonNull(value);
+        V oldValue = get(key, time);
+        V newValue = (containsKey(key, time) && oldValue != null)
+                ? remappingFunction.apply(oldValue, value)
+                : value;
+        if (newValue != null) {
+            put(key, time, newValue);
+        } else {
+            remove(key, time);
+        }
+        return newValue;
+    }
+
+    /**
+     * If the specified instance of {#link Key} is not already associated
+     * with a value or is associated with null, associates it with the
+     * given non-null value. Otherwise, replaces the associated value
+     * with the results of the given remapping function, or removes if
+     * the result is {@code null}. This method may be of use when
+     * combining multiple mapped values for a key.
      *
      * <p>If the function returns {@code null} the mapping is removed.  If the
      * function itself throws an (unchecked) exception, the exception is
@@ -911,53 +874,7 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
      * @param remappingFunction the function to recompute a value if present
      * @return the new value associated with the specified key, or null if no
      * value is associated with the key
-     * @throws UnsupportedOperationException if the {@code put} operation
-     *                                       is not supported by this map
-     *                                       (<a href="{@docRoot}/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws ClassCastException            if the class of the specified key or value
-     *                                       prevents it from being stored in this map
-     *                                       (<a href="{@docRoot}/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException          if the specified key is null and this map
-     *                                       does not support null keys or the value or remappingFunction is
-     *                                       null
-     * @implSpec The default implementation is equivalent to performing the following
-     * steps for this {@code map}, then returning the current value or
-     * {@code null} if absent:
-     *
-     * <pre> {@code
-     * V oldValue = map.get(key);
-     * V newValue = (oldValue == null) ? value :
-     *              remappingFunction.apply(oldValue, value);
-     * if (newValue == null)
-     *     map.remove(key);
-     * else
-     *     map.put(key, newValue);
-     * }</pre>
-     *
-     * <p>The default implementation makes no guarantees about synchronization
-     * or atomicity properties of this method. Any implementation providing
-     * atomicity guarantees must override this method and document its
-     * concurrency properties. In particular, all implementations of
-     * subinterface {@link java.util.concurrent.ConcurrentMap} must document
-     * whether the function is applied once atomically only if the value is not
-     * present.
-     * @since 1.8
      */
-    default V merge(K key, T time, V value,
-                    BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
-        Objects.requireNonNull(remappingFunction);
-        Objects.requireNonNull(value);
-        V oldValue = get(key, time);
-        V newValue = (containsKey(key, time) && oldValue != null) ? remappingFunction.apply(oldValue, value) :
-                value;
-        if (newValue != null) {
-            put(key, time, newValue);
-        } else {
-            remove(key, time);
-        }
-        return newValue;
-    }
-
     default V merge(Key<K, T> key, V value,
                     BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
@@ -975,13 +892,13 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
 
     /**
      * A map entry (key-time-value pair).  The {@link #entrySet} method returns
-     * a collection-view of the map, whose elements are of this class.  The
+     * a collection-view of the map, whose elements are of this class. The
      * <i>only</i> way to obtain a reference to a map entry is from the
-     * iterator of this collection-view.  These {@code Entry} objects are
+     * iterator of this collection-view. These {@code Entry} objects are
      * valid <i>only</i> for the duration of the iteration; more formally,
      * the behavior of a map entry is undefined if the backing map has been
      * modified after the entry was returned by the iterator, except through
-     * the {@code setValue} operation on the map entry.
+     * the {@link #setValue(V) setValue} operation on the map entry.
      *
      * @see #entrySet()
      */
@@ -999,6 +916,7 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
          * @since 1.8
          */
         static <K extends Comparable<? super K>, T extends Comparable<? super T>, V> Comparator<Entry<K, T, V>> comparingByKey() {
+            //noinspection ComparatorCombinators
             return (Comparator<Entry<K, T, V>> & Serializable)
                     (c1, c2) -> c1.getKey().compareTo(c2.getKey());
         }
@@ -1016,6 +934,7 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
          * @since 1.8
          */
         static <K, T extends Comparable<? super T>, V extends Comparable<? super V>> Comparator<Entry<K, T, V>> comparingByValue() {
+            //noinspection ComparatorCombinators
             return (Comparator<Entry<K, T, V>> & Serializable)
                     (c1, c2) -> c1.getValue().compareTo(c2.getValue());
         }
@@ -1062,45 +981,30 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
          * Returns the key corresponding to this entry.
          *
          * @return the key corresponding to this entry
-         * @throws IllegalStateException implementations may, but are not
-         *                               required to, throw this exception if the entry has been
-         *                               removed from the backing map.
          */
         K getKey();
+
+        /**
+         * Returns the point in time corresponding to this entry.
+         *
+         * @return the point in time corresponding to this entry
+         */
 
         T getTime();
 
         /**
-         * Returns the value corresponding to this entry.  If the mapping
-         * has been removed from the backing map (by the iterator's
-         * {@code remove} operation), the results of this call are undefined.
+         * Returns the value corresponding to this entry.
          *
          * @return the value corresponding to this entry
-         * @throws IllegalStateException implementations may, but are not
-         *                               required to, throw this exception if the entry has been
-         *                               removed from the backing map.
          */
         V getValue();
 
         /**
          * Replaces the value corresponding to this entry with the specified
-         * value (optional operation).  (Writes through to the map.)  The
-         * behavior of this call is undefined if the mapping has already been
-         * removed from the map (by the iterator's {@code remove} operation).
+         * value (optional operation).  (Writes through to the map.)
          *
          * @param value new value to be stored in this entry
          * @return old value corresponding to the entry
-         * @throws UnsupportedOperationException if the {@code put} operation
-         *                                       is not supported by the backing map
-         * @throws ClassCastException            if the class of the specified value
-         *                                       prevents it from being stored in the backing map
-         * @throws NullPointerException          if the backing map does not permit
-         *                                       null values, and the specified value is null
-         * @throws IllegalArgumentException      if some property of this value
-         *                                       prevents it from being stored in the backing map
-         * @throws IllegalStateException         implementations may, but are not
-         *                                       required to, throw this exception if the entry has been
-         *                                       removed from the backing map.
          */
         V setValue(V value);
 
@@ -1149,13 +1053,56 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
      */
     interface Key<K, T extends Comparable<? super T>> {
 
+        /**
+         * Returns The key component of this key-time pair
+         *
+         * @return The key component of this key-time pair
+         */
         K getKey();
 
+        /**
+         * Returns The time component of this key-time pair
+         *
+         * @return The time component of this key-time pair
+         */
         T getTime();
 
+        /**
+         * Compares the specified object with this entry for equality.
+         * Returns {@code true} if the given object is also a map entry and
+         * the two entries represent the same mapping.  More formally, two
+         * entries {@code e1} and {@code e2} represent the same mapping
+         * if<pre>
+         *     (e1.getKey()==null ?
+         *      e2.getKey()==null : e1.getKey().equals(e2.getKey()))  &amp;&amp;
+         *     (e1.getValue()==null ?
+         *      e2.getValue()==null : e1.getValue().equals(e2.getValue()))
+         * </pre>
+         * This ensures that the {@code equals} method works properly across
+         * different implementations of the {@code Map.Entry} interface.
+         *
+         * @param o object to be compared for equality with this map entry
+         * @return {@code true} if the specified object is equal to this map
+         * entry
+         */
         boolean equals(Object o);
 
+        /**
+         * Returns the hash code value for this map entry.  The hash code
+         * of a map entry {@code e} is defined to be: <pre>
+         *     (e.getKey()==null   ? 0 : e.getKey().hashCode()) ^
+         *     (e.getValue()==null ? 0 : e.getValue().hashCode())
+         * </pre>
+         * This ensures that {@code e1.equals(e2)} implies that
+         * {@code e1.hashCode()==e2.hashCode()} for any two Entries
+         * {@code e1} and {@code e2}, as required by the general
+         * contract of {@code Object.hashCode}.
+         *
+         * @return the hash code value for this map entry
+         * @see Object#hashCode()
+         * @see Object#equals(Object)
+         * @see #equals(Object)
+         */
         int hashCode();
     }
 }
-
