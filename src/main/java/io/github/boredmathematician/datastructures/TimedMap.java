@@ -72,6 +72,8 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
     /**
      * Returns the number of key-time-value mappings in this map.
      * This includes all the mappings for all keys, at all point in time.
+     * <p>
+     * If the map contains more than Integer.MAX_VALUE elements, returns Integer.MAX_VALUE.
      *
      * @return the number of key-time-value mappings in this map.
      */
@@ -266,21 +268,25 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
         return put(key.getKey(), key.getTime(), value);
     }
 
+    default V put(Entry<K, T, V> entry) {
+        return put(entry.getKey(), entry.getTime(), entry.getValue());
+    }
+
     /**
      * Removes all mappings at all points in time for a key from this map if it is present.
      *
-     * <p>Returns the {@code true} if the map previously contained at least one association with the key,
-     * or {@code null} if the map contained no mapping for the key.
+     * <p>Returns a mapping of associations at all known times if the map previously
+     * contained or {@code null} if the map contained no mapping for the key.
      *
      * <p>The map will not contain any mapping for the specified key, at any point in time,
      * once the call returns. That is to say, {@link #containsKey(K) containsKey(key)} will return
      * {@code false}
      *
      * @param key key whose mapping is to be removed from the map
-     * @return the {@code true} if the map previously contained at least one association with the key,
-     * or {@code false} if the map contained no mapping for the key.
+     * @return a mapping of associations at all known times if the map previously
+     * contained or {@code null} if the map contained no mapping for the key.
      */
-    boolean remove(K key);
+    Map<T, V> remove(K key);
 
     /**
      * Removes the mapping for the key at the specified point in time from this map, if it is present.
@@ -325,7 +331,9 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
      *
      * @param m mappings to be stored in this map
      */
-    void putAll(TimedMap<? extends K, ? extends T, ? extends V> m);
+    default void putAll(TimedMap<? extends K, ? extends T, ? extends V> m) {
+        m.forEach(this::put);
+    }
 
     /**
      * Removes all of the mappings from this map.
@@ -991,6 +999,13 @@ public interface TimedMap<K, T extends Comparable<? super T>, V> {
          */
 
         T getTime();
+
+        /**
+         * Returns an instance of {@link Key} corresponding to this entry.
+         *
+         * @return an instance of {@link Key} corresponding to this entry
+         */
+        Key<K, T> getKeyTime();
 
         /**
          * Returns the value corresponding to this entry.
